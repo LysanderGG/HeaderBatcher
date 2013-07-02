@@ -1,9 +1,39 @@
 HeaderBatcher
 =============
 
-Add headers to source files
+C# class to add/remove headers to files recursively.
+Basically it will be used to remove old headers and replace them with a new one.
+It can use a white and a black list to restrain the files which will be edited.
+It can also use a list of headers not to replace.
+
+For any detail, please refer to the How to use section.
+
+How to use ?
+=============
+
+At the moment, you just need to execute a code like the one below.
+
+```C#
+FileBatcher fb = new FileBatcher(s_newHeaderPath, s_oldHeadersPaths, s_ignoreHeadersPaths, s_blackListPath, s_witheListPath);
+try {
+  int res = fb.BatchAll(s_path);
+  Console.WriteLine("Headers Added : " + res);
+} catch(Exception e) {
+  ...
+}
+```
+
+You can find a complete example in the Program.cs file.
+Paths must be absolute.
+
+### White and Black List syntax
 
 
+The following cases are managed : 
+* somepath/file.sth
+* somepath/*
+* somepath/*.sth
+* *.sth
 
 LICENSE
 ============
