@@ -13,6 +13,7 @@ namespace HeaderBatcher
         private String      m_headerToInsert;
 
         private String[]    m_toIgnore;
+        private String[]    m_whiteList;
 
         /// <summary>
         /// Creates a new FileBatcher.
@@ -20,7 +21,7 @@ namespace HeaderBatcher
         /// <param name="_headerToInsertPath">Path to the header to insert.</param>
         /// <param name="_headersToRemovePaths">Paths to the headers to remove.</param>
         /// <param name="_ignoreFilePath">Path to an ignore definition file.</param>
-        public FileBatcher(String _headerToInsertPath, String[] _headersToRemovePaths, String _ignoreFilePath = null) {
+        public FileBatcher(String _headerToInsertPath, String[] _headersToRemovePaths, String _ignoreFilePath = null, String _whiteListFilePath = null) {
 
             int i = 0;
             m_headersToRemove = new String[_headersToRemovePaths.Length];   
@@ -38,6 +39,10 @@ namespace HeaderBatcher
                 m_toIgnore = File.ReadAllLines(_ignoreFilePath, Encoding.UTF8);
             }
 
+            if(File.Exists(_whiteListFilePath)) {
+                m_whiteList = File.ReadAllLines(_whiteListFilePath, Encoding.UTF8);
+            }
+
         }
         
         /// <summary>
@@ -52,7 +57,7 @@ namespace HeaderBatcher
                 return false;
             }
 
-            if(!MustBeBatched(_path)) {
+            if(!IsWhiteListed(_path) || MustBeIgnored(_path)) {
                 return false;
             }
 
@@ -113,47 +118,85 @@ namespace HeaderBatcher
         /// </summary>
         /// <param name="_path">Path of the file to patched or not.</param>
         /// <returns></returns>
-        private bool MustBeBatched(String _path) {
+        private bool MustBeIgnored(String _path) {
             if(m_toIgnore != null) {
                 foreach(String str in m_toIgnore) {
-                    // Path like C:/somepath/file.sth
-                    if(str.Equals(_path)) {
-                        return false;
-                    }
-
-                    if(str.Contains('*')) {
-                        // Path like C:/somepath/* 
-                        if(str.EndsWith("*")) {
-                            if(_path.StartsWith(str.Substring(0, str.Length - 1))) {
-                                return false;
-                            }
-                        }
-                    
-                        // Path like *.sth
-                        if(str.StartsWith("*")) {
-                            if(_path.EndsWith(str.Substring(1, str.Length - 1))) {
-                                return false;
-                            }
-                        }
-
-                        // Path like C:/somepath/*.sth
-                        if(!str.StartsWith("*") && str.Contains("*.")) {
-                            String[] strArray = str.Split(new Char[]{'*'});
-                            if(strArray.Length > 2) {
-                                Console.WriteLine(str + " is not a valid path to ignore. Continue with next one.");
-                            }
-                            String path = strArray[0];
-                            String ext  = strArray[1];
-
-                            if(_path.StartsWith(path) && _path.EndsWith(ext)) {
-                                return false;
-                            }
-                        }
+                    if(FileBatcher.MatchPath(str, _path)) {
+                        return true;
                     }
                 }
             }
 
-            return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Tells if a file should be patched using the WhiteList
+        /// </summary>
+        /// <param name="_path">Path of the file.</param>
+        /// <returns>True if the file is whitelisted or if there is no white list. False otherwise.</returns>
+        private bool IsWhiteListed(String _path) {
+            if(m_whiteList == null) {
+                return true;
+            }
+
+            foreach(String str in m_whiteList) {
+                if(FileBatcher.MatchPath(str, _path)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Tells if a path matches a path format.
+        /// It can have the following formats : 
+        /// # C:/somepath/file.sth
+        /// # C:/somepath/*
+        /// # C:/somepath/*.sth
+        /// # *.sth
+        /// </summary>
+        /// <param name="_pathFormat">Path format.</param>
+        /// <param name="_path">Path to verify the matching.</param>
+        /// <returns>True if it matches, False otherwise.</returns>
+        private static bool MatchPath(String _pathFormat, String _path) {
+            // Path like C:/somepath/file.sth
+            if(_pathFormat.Equals(_path)) {
+                return true;
+            }
+
+            if(_pathFormat.Contains('*')) {
+                // Path like C:/somepath/* 
+                if(_pathFormat.EndsWith("*")) {
+                    if(_path.StartsWith(_pathFormat.Substring(0, _pathFormat.Length - 1))) {
+                        return true;
+                    }
+                }
+                    
+                // Path like *.sth
+                if(_pathFormat.StartsWith("*")) {
+                    if(_path.EndsWith(_pathFormat.Substring(1, _pathFormat.Length - 1))) {
+                        return true;
+                    }
+                }
+
+                // Path like C:/somepath/*.sth
+                if(!_pathFormat.StartsWith("*") && _pathFormat.Contains("*.")) {
+                    String[] strArray = _pathFormat.Split(new Char[]{'*'});
+                    if(strArray.Length > 2) {
+                        Console.WriteLine(_pathFormat + " is not a valid path to ignore. Continue with next one.");
+                    }
+                    String path = strArray[0];
+                    String ext  = strArray[1];
+
+                    if(_path.StartsWith(path) && _path.EndsWith(ext)) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
     }
