@@ -10,9 +10,10 @@ namespace HeaderBatcher
     class FileBatcher
     {
         private String[]    m_headersToRemove;
+        private String[]    m_headersToIgnore;
         private String      m_headerToInsert;
 
-        private String[]    m_toIgnore;
+        private String[]    m_blackList;
         private String[]    m_whiteList;
 
         /// <summary>
@@ -20,8 +21,10 @@ namespace HeaderBatcher
         /// </summary>
         /// <param name="_headerToInsertPath">Path to the header to insert.</param>
         /// <param name="_headersToRemovePaths">Paths to the headers to remove.</param>
-        /// <param name="_ignoreFilePath">Path to an ignore definition file.</param>
-        public FileBatcher(String _headerToInsertPath, String[] _headersToRemovePaths, String _ignoreFilePath = null, String _whiteListFilePath = null) {
+        /// <param name="_headersToIgnorePaths">Paths to headers to ignore. The files containing these headers won't be patched.</param>
+        /// <param name="_blackListFilePath">Path to the black list file.</param>
+        /// <param name="_whiteListFilePath">Path to the white list file.</param>
+        public FileBatcher(String _headerToInsertPath, String[] _headersToRemovePaths, String[] _headersToIgnorePaths = null, String _blackListFilePath = null, String _whiteListFilePath = null) {
 
             int i = 0;
             m_headersToRemove = new String[_headersToRemovePaths.Length];   
@@ -31,12 +34,24 @@ namespace HeaderBatcher
                 }
             }
 
+            if(_headersToIgnorePaths == null) {
+                m_headersToIgnore = null;
+            } else {
+                i = 0;
+                m_headersToIgnore = new String[_headersToIgnorePaths.Length];
+                foreach(String path in _headersToIgnorePaths) {
+                    if(File.Exists(path)) {
+                        m_headersToIgnore[i++] = File.ReadAllText(path, Encoding.UTF8);
+                    }
+                }
+            }
+
             if(File.Exists(_headerToInsertPath)) {
                 m_headerToInsert = File.ReadAllText(_headerToInsertPath, Encoding.UTF8);
             }
             
-            if(File.Exists(_ignoreFilePath)) {
-                m_toIgnore = File.ReadAllLines(_ignoreFilePath, Encoding.UTF8);
+            if(File.Exists(_blackListFilePath)) {
+                m_blackList = File.ReadAllLines(_blackListFilePath, Encoding.UTF8);
             }
 
             if(File.Exists(_whiteListFilePath)) {
@@ -57,12 +72,20 @@ namespace HeaderBatcher
                 return false;
             }
 
-            if(!IsWhiteListed(_path) || MustBeIgnored(_path)) {
+            if(!IsWhiteListed(_path) || IsBlackListed(_path)) {
                 return false;
             }
 
             String fileText = File.ReadAllText(_path, Encoding.UTF8);
             
+            // Is the file containing a header we have to ignore ?
+            foreach(String headerToIgnore in m_headersToIgnore) {
+                if(headerToIgnore != null && fileText.StartsWith(headerToIgnore)) {
+                    fileText = fileText.Remove(0, headerToIgnore.Length);
+                    return false;
+                }
+            }
+
             // Remove the first old header found.
             foreach(String headerToRemove in m_headersToRemove) {
                 if(headerToRemove != null && fileText.StartsWith(headerToRemove)) {
@@ -71,7 +94,7 @@ namespace HeaderBatcher
                 }
             }
 
-            // Insert the new one
+            // Insert the new header
             fileText = fileText.Insert(0, m_headerToInsert);
             
             File.WriteAllText(_path, fileText, Encoding.UTF8);
@@ -118,9 +141,9 @@ namespace HeaderBatcher
         /// </summary>
         /// <param name="_path">Path of the file to patched or not.</param>
         /// <returns></returns>
-        private bool MustBeIgnored(String _path) {
-            if(m_toIgnore != null) {
-                foreach(String str in m_toIgnore) {
+        private bool IsBlackListed(String _path) {
+            if(m_blackList != null) {
+                foreach(String str in m_blackList) {
                     if(FileBatcher.MatchPath(str, _path)) {
                         return true;
                     }
