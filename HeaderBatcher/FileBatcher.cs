@@ -24,23 +24,27 @@ namespace HeaderBatcher
         /// <param name="_headersToIgnorePaths">Paths to headers to ignore. The files containing these headers won't be patched.</param>
         /// <param name="_blackListFilePath">Path to the black list file.</param>
         /// <param name="_whiteListFilePath">Path to the white list file.</param>
-        public FileBatcher(String _headerToInsertPath, String[] _headersToRemovePaths, String[] _headersToIgnorePaths = null, String _blackListFilePath = null, String _whiteListFilePath = null) {
+        public FileBatcher(String _headerToInsertPath, String[] _headersToRemovePaths = null, String[] _headersToIgnorePaths = null, String _blackListFilePath = null, String _whiteListFilePath = null) {
 
-            int i = 0;
-            m_headersToRemove = new String[_headersToRemovePaths.Length];   
-            foreach(String path in _headersToRemovePaths) {
-                if(File.Exists(path)) {
-                    m_headersToRemove[i++] = File.ReadAllText(path, Encoding.UTF8);
+            if(_headersToRemovePaths == null) {
+                m_headersToRemove = null;
+            } else {
+                int i = 0;
+                m_headersToRemove = new String[_headersToRemovePaths.Length];   
+                foreach(String path in _headersToRemovePaths) {
+                    if(path != null && File.Exists(path)) {
+                        m_headersToRemove[i++] = File.ReadAllText(path, Encoding.UTF8);
+                    }
                 }
             }
 
             if(_headersToIgnorePaths == null) {
                 m_headersToIgnore = null;
             } else {
-                i = 0;
+                int i = 0;
                 m_headersToIgnore = new String[_headersToIgnorePaths.Length];
                 foreach(String path in _headersToIgnorePaths) {
-                    if(File.Exists(path)) {
+                    if(path != null && File.Exists(path)) {
                         m_headersToIgnore[i++] = File.ReadAllText(path, Encoding.UTF8);
                     }
                 }
@@ -79,18 +83,22 @@ namespace HeaderBatcher
             String fileText = File.ReadAllText(_path, Encoding.UTF8);
             
             // Is the file containing a header we have to ignore ?
-            foreach(String headerToIgnore in m_headersToIgnore) {
-                if(headerToIgnore != null && fileText.StartsWith(headerToIgnore)) {
-                    fileText = fileText.Remove(0, headerToIgnore.Length);
-                    return false;
+            if(m_headersToIgnore != null) {
+                foreach(String headerToIgnore in m_headersToIgnore) {
+                    if(headerToIgnore != null && fileText.StartsWith(headerToIgnore)) {
+                        fileText = fileText.Remove(0, headerToIgnore.Length);
+                        return false;
+                    }
                 }
             }
 
             // Remove the first old header found.
-            foreach(String headerToRemove in m_headersToRemove) {
-                if(headerToRemove != null && fileText.StartsWith(headerToRemove)) {
-                    fileText = fileText.Remove(0, headerToRemove.Length);
-                    break;
+            if(m_headersToRemove != null) {
+                foreach(String headerToRemove in m_headersToRemove) {
+                    if(headerToRemove != null && fileText.StartsWith(headerToRemove)) {
+                        fileText = fileText.Remove(0, headerToRemove.Length);
+                        break;
+                    }
                 }
             }
 
