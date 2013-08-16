@@ -7,7 +7,7 @@ using System.IO;
 
 namespace HeaderBatcher
 {
-    class FileBatcher
+    public class FileBatcher
     {
         private String[]    m_headersToRemove;
         private String[]    m_headersToIgnore;
